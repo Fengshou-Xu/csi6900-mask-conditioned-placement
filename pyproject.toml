@@ -1,0 +1,18 @@
+[project]
+name = "csi6900-mask-placement"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = "==3.12.*"
+dependencies = [
+    "brax",
+    "jax[cuda12]>=0.10.0",
+    "matplotlib>=3.10.9",
+    "playground>=0.2.0",
+    "sbx-rl>=0.21.0",
+    "tfp-nightly>=0.26.0.dev20260507",
+    "warp-lang<1.13",
+]
+
+[tool.uv.sources]
+brax = { git = "https://github.com/google/brax.git" }

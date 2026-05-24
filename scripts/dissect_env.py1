@@ -1,0 +1,102 @@
+"""Dissect the PandaPickCubeOrientation environment to understand its internals."""
+
+import jax
+import jax.numpy as jnp
+from mujoco_playground import registry
+
+env = registry.load("PandaPickCubeOrientation")
+key = jax.random.PRNGKey(42)
+
+# --- 1. Understand the action/observation space ---
+print("=" * 60)
+print("ACTION & OBSERVATION SPACE")
+print("=" * 60)
+print(f"action_size: {env.action_size}")
+print(f"action_scale: {env._action_scale}")
+print(f"control range lowers: {env._lowers}")
+print(f"control range uppers: {env._uppers}")
+
+state = env.reset(key)
+print(f"obs shape: {state.obs.shape}")
+print(f"obs dtype: {state.obs.dtype}")
+
+# --- 2. What's inside state.data? (the physics state) ---
+print("\n" + "=" * 60)
+print("PHYSICS STATE (state.data)")
+print("=" * 60)
+print(f"qpos shape: {state.data.qpos.shape}  (generalized positions: 7 arm joints + 2 fingers + 7 box freejoint)")
+print(f"qvel shape: {state.data.qvel.shape}  (generalized velocities)")
+print(f"ctrl shape: {state.data.ctrl.shape}  (current control signal)")
+
+# --- 3. Where are things in space? ---
+print("\n" + "=" * 60)
+print("POSITIONS AT RESET")
+print("=" * 60)
+gripper_pos = state.data.site_xpos[env._gripper_site]
+box_pos = state.data.xpos[env._obj_body]
+target_pos = state.info["target_pos"]
+print(f"gripper position: {gripper_pos}")
+print(f"box position:     {box_pos}")
+print(f"target position:  {target_pos}")
+print(f"gripper-to-box distance:  {jnp.linalg.norm(gripper_pos - box_pos):.4f}")
+print(f"box-to-target distance:   {jnp.linalg.norm(box_pos - target_pos):.4f}")
+
+# --- 4. What does the observation vector contain? ---
+# From _get_obs: qpos, qvel, gripper_pos, gripper_mat[3:], box_mat[3:],
+#                box-gripper, target-box, target_rot-box_rot, ctrl-qpos
+print("\n" + "=" * 60)
+print("OBSERVATION BREAKDOWN")
+print("=" * 60)
+nq = state.data.qpos.shape[0]
+nv = state.data.qvel.shape[0]
+print(f"qpos: obs[0:{nq}]  ({nq} dims)")
+print(f"qvel: obs[{nq}:{nq+nv}]  ({nv} dims)")
+idx = nq + nv
+print(f"gripper_pos: obs[{idx}:{idx+3}]  (3 dims)")
+idx += 3
+print(f"gripper_mat[3:]: obs[{idx}:{idx+6}]  (6 dims)")
+idx += 6
+print(f"box_mat[3:]: obs[{idx}:{idx+6}]  (6 dims)")
+idx += 6
+print(f"box - gripper: obs[{idx}:{idx+3}]  (3 dims)")
+idx += 3
+print(f"target - box: obs[{idx}:{idx+3}]  (3 dims)")
+idx += 3
+print(f"rot_error: obs[{idx}:{idx+6}]  (6 dims)")
+idx += 6
+nu = state.data.ctrl.shape[0]
+n_ctrl_err = nu  # ctrl - qpos for non-finger joints
+print(f"ctrl - qpos: obs[{idx}:{idx+n_ctrl_err}]  ({n_ctrl_err} dims)")
+idx += n_ctrl_err
+print(f"Total obs dims accounted for: {idx}, actual: {state.obs.shape[0]}")
+
+# --- 5. Reward components ---
+print("\n" + "=" * 60)
+print("REWARD AT RESET (should all be near their initial values)")
+print("=" * 60)
+print(f"metrics: {state.metrics}")
+print(f"total reward: {state.reward}")
+
+# --- 6. Run 5 steps with zero action and watch what changes ---
+print("\n" + "=" * 60)
+print("5 STEPS WITH ZERO ACTION")
+print("=" * 60)
+s = state
+for i in range(5):
+    s = env.step(s, jnp.zeros(env.action_size))
+    gripper = s.data.site_xpos[env._gripper_site]
+    box = s.data.xpos[env._obj_body]
+    print(f"step {i+1}: reward={float(s.reward):.4f}, "
+          f"gripper-box={float(jnp.linalg.norm(gripper - box)):.4f}, "
+          f"box-target={float(jnp.linalg.norm(box - s.info['target_pos'])):.4f}, "
+          f"done={float(s.done)}")
+
+# --- 7. Episode config ---
+print("\n" + "=" * 60)
+print("EPISODE CONFIG")
+print("=" * 60)
+print(f"episode_length: {env._config.episode_length} steps")
+print(f"ctrl_dt: {env._config.ctrl_dt}s, sim_dt: {env._config.sim_dt}s")
+print(f"n_substeps: {env.n_substeps} (ctrl_dt / sim_dt)")
+print(f"real-time per episode: {env._config.episode_length * env._config.ctrl_dt:.1f}s")
+print(f"reward scales: {dict(env._config.reward_config.scales)}")

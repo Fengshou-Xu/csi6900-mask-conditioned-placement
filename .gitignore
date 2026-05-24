@@ -1,0 +1,27 @@
+# Python-generated files
+__pycache__/
+*.py[oc]
+build/
+dist/
+wheels/
+*.egg-info
+
+# Virtual environments
+.venv
+
+# IDE
+.idea/
+
+# MuJoCo logs
+MUJOCO_LOG.TXT
+
+# Training artifacts
+*.pkl
+*.mp4
+
+# Backups
+phase1_backup_zh/
+
+# Transcripts / session notes
+*_transcript.txt
+session_*.md
