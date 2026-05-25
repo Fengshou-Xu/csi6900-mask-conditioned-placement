@@ -88,6 +88,6 @@ A benchmark of 6 target configurations confirmed that the agent can learn placem
 | Offset y, fixed | [0.637, 0.15] | 0 | 1173 |
 | Offset x+y, fixed | [0.5, 0.1] | 0 | 1219 |
 
-Expanding the target range beyond the arm's reachable workspace (e.g., center at [0.3, 0.3]) caused training to degrade significantly (reward ~470), confirming that target positions must remain within the arm's physical reach (~0.6m from base).
+The target center and randomization range must be chosen carefully. An early configuration (center [0.3, 0.3] with ±0.3 range) caused training to degrade significantly (reward ~470), because extreme target positions (e.g., [0.6, 0.6] at 0.85m from base) approached or exceeded the arm's physical reach of ~0.855m, introducing infeasible episodes that degraded training.
 
 The current baseline uses a simple distance-based reward without any visual or goal-conditioning signal. Phase 2 will introduce mask-based goal conditioning to enable placement at more diverse target locations and to guide the agent's trajectory rather than relying solely on the distance reward.
