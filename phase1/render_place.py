@@ -55,6 +55,14 @@ def main():
 
     # --- 6. Initialize renderer ---
     mj_model = env.mj_model
+    # Make target marker visually distinct: green, semi-transparent, flat disc
+    target_body_id = mj_model.body("mocap_target").id
+    for i in range(mj_model.ngeom):
+        if mj_model.geom_bodyid[i] == target_body_id:
+            mj_model.geom_rgba[i] = [0, 1, 0, 0.5]  # green, 50% transparent
+            mj_model.geom_size[i] = [0.05, 0.05, 0.005]  # flat disc shape
+            break
+
     renderer = mujoco.Renderer(mj_model, width=640, height=480)
     mj_data = mujoco.MjData(mj_model)
     frames = []
@@ -68,6 +76,8 @@ def main():
 
         # Transfer GPU state to CPU renderer
         mj_data.qpos[:] = jax.device_get(state.data.qpos)
+        mj_data.mocap_pos[:] = jax.device_get(state.data.mocap_pos)
+        mj_data.mocap_quat[:] = jax.device_get(state.data.mocap_quat)
         mujoco.mj_forward(mj_model, mj_data)
         renderer.update_scene(mj_data)
         frames.append(renderer.render())
